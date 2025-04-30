@@ -32,11 +32,12 @@ with col2:
     This land use map of Berlin shows the proportions of land use categories within 1000×1000 m² map tiles. Hover over the tiles to see the tooltips.
     The five colors represent land use patterns identified through k-means clustering, an unsupervised machine learning method. 
     Cluster labels were assigned based on the average composition of land use types within each group. The geospatial data from 2024 is sourced from [Berlin Open Data Portal](https://daten.berlin.de/datensaetze/alkis-berlin-tatsachliche-nutzung-wfs-0ee77a1d).<br>
-    - <span style='color:#F43C3D'><b>Urban Residential</b></span>  
+    - <span style='color:#34ADE2'><b>Recreation/ Nature/ Lakeside</b></span>  
     - <span style='color:#33BBC1'><b>Forest</b></span>  
-    - <span style='color:#F9DF6A'><b>Mixed Urban/ Recreation/ Industrial</b></span>  
+    - <span style='color:#F9DF6A'><b>Urban Residential</b></span>  
     - <span style='color:#D5E1E4'><b>Agriculture</b></span>  
-    - <span style='color:#34ADE2'><b>Lakeside/ Nature/ Residential</b></span>  
+    - <span style='color:#F43C3D'><b>Urban-Industrial</b></span>  
+    - <span style='color:#949494'><b>not enough data <20% coverage</b></span> 
     """,
     unsafe_allow_html=True
 )
@@ -74,6 +75,9 @@ tile_gdf = gpd.GeoDataFrame(geometry=tiles, crs=gdf.crs)
 # tile_id as column
 tile_gdf = tile_gdf.reset_index().rename(columns={"index": "tile_id"})
 
+# Tile area
+tile_area = tile_size * tile_size
+
 # Intersect each land use polygon with each tile 
 intersection = gpd.overlay(gdf, tile_gdf, how="intersection")
 
@@ -83,15 +87,18 @@ intersection["area"] = intersection.geometry.area
 # Group by tile and land use type
 area_by_tile = intersection.groupby(["tile_id", "bezeich"])["area"].sum().unstack(fill_value=0)
 
-# Normalize to proportions per tile (so each tile sums to ca. 1.0)
-tile_features = area_by_tile.div(area_by_tile.sum(axis=1), axis=0)
+# Normalize by full tile area
+tile_features = area_by_tile / tile_area
 
-# Merge proportions back to tile_gdf for mapping
-tile_gdf = tile_gdf.join(tile_features, on="tile_id")
-tile_features.sum(axis=1).round(3).value_counts()
-
-# In case of empty intersections
+# In case of empty intersections 
 tile_features = tile_features.fillna(0)
+
+# Ensure index alignment
+tile_gdf = tile_gdf.set_index("tile_id").join(tile_features)  
+
+tile_gdf["coverage"] = area_by_tile.sum(axis=1) / tile_area  
+
+tile_gdf = tile_gdf.reset_index()
 
 ##### k means clustering #####
 
@@ -125,24 +132,32 @@ for cluster_id in cluster_means.index:
 
 print(tile_gdf["cluster"].isna().sum())
 
+# Low coverage <20%
+tile_gdf["cluster"] = tile_gdf.apply(
+    lambda row: "low_coverage" if row["coverage"] < 0.20 else row["cluster"], axis=1
+)
+
+
 
 ##### Folium Map #####
 
 # Cluster label mapping
 cluster_labels = {
-    "0": "Urban Residential",
+    "0": "Recreation/ Nature/ Lakeside",
     "1": "Forest",
-    "2": "Mixed Urban/ Recreation/ Industrial",
+    "2": "Urban Residential",
     "3": "Agriculture",
-    "4": "Lakeside/ Nature/ Residential"
+    "4": "Urban-Industrial",
+    "low_coverage": "not enough data"
 }
 
 color_mapping = {
-    "Urban Residential": "#F43C3D",    
+    "Recreation/ Nature/ Lakeside": "#34ADE2",    
     "Forest": "#33BBC1",    
-    "Mixed Urban/ Recreation/ Industrial": "#F9DF6A",  
+    "Urban Residential": "#F9DF6A",  
     "Agriculture": "#D5E1E4",
-    "Lakeside/ Nature/ Residential": "#34ADE2"  
+    "Urban-Industrial": "#F43C3D",
+    "low_coverage": "#949494" 
 }
 
 # Add cluster names
@@ -168,11 +183,11 @@ with col1:
     m = folium.Map(location=map_center, zoom_start=10)
 
     cluster_colors = {
-        "0": "#F43C3D",
+        "0": "#34ADE2",
         "1": "#33BBC1",
         "2": "#F9DF6A",
         "3": "#D5E1E4",
-        "4": "#34ADE2"
+        "4": "#F43C3D"
     }
 
     for _, row in tile_gdf.iterrows():
@@ -192,7 +207,7 @@ with col1:
                 "fillColor": color,
                 "color": "black",
                 "weight": 0.5,
-                "fillOpacity": 0.5,
+                "fillOpacity": 0.7,
             },
             tooltip=tooltip
         ).add_to(m)
