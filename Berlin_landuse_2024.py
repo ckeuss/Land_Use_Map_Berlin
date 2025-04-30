@@ -29,7 +29,7 @@ with col2:
     # Text and form
     st.markdown(
     """
-    This land use map of Berlin shows the proportions of land use categories within 1000×1000 m² map tiles. Hover over the tiles to see the tooltips.
+    This land use map of Berlin shows the proportions of land use categories within 1000×1000 m² map tiles. Click on a tile to see the details.
     The five colors represent land use patterns identified through k-means clustering, an unsupervised machine learning method. 
     Cluster labels were assigned based on the average composition of land use types within each group. The geospatial data from 2024 is sourced from [Berlin Open Data Portal](https://daten.berlin.de/datensaetze/alkis-berlin-tatsachliche-nutzung-wfs-0ee77a1d).<br>
     - <span style='color:#34ADE2'><b>Recreation/ Nature/ Lakeside</b></span>  
@@ -197,9 +197,11 @@ with col1:
             'SportFreizeitUndErholungsflaeche', 'StehendesGewaesser', 'Strassenverkehr', 'Sumpf',
             'TagebauGrubeSteinbruch', 'UnlandVegetationsloseFlaeche', 'Wald', 'Weg', 'Wohnbauflaeche']
         
-        tooltip = "<br>".join(
-            [f"{col}: {row[col]*100:.2f}%" for col in landuse_columns if col in row]
-        )
+        popup_content = f"""
+        <div style="max-height: 200px; overflow-y: auto; font-size: 12px; width: 250px;">
+        {'<br>'.join([f"{col}: {row[col]*100:.2f}%" for col in landuse_columns if col in row])}
+        </div>
+        """
 
         folium.GeoJson(
             row["geometry"],
@@ -209,7 +211,7 @@ with col1:
                 "weight": 0.5,
                 "fillOpacity": 0.7,
             },
-            tooltip=tooltip
+            popup=folium.Popup(popup_content, max_width=300)
         ).add_to(m)
 
     # If submit add geocoded location
