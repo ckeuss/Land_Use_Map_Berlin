@@ -4,6 +4,7 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 from shapely.geometry import box
+from shapely import wkt
 
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
@@ -46,21 +47,13 @@ with col2:
         submit = st.form_submit_button("Update Map")
 
 
-# Load data
-#WFS: https://fbinter.stadt-berlin.de/fb/wfs/data/senstadt/s_wfs_alkis_tatsaechlichenutzungflaechen
-gdf = gpd.read_file("data/berlin_landuse.geojson")
+# Load preprocessed data
+df_part1 = pd.read_csv("data/Landuse_Berlin_part1.csv")
+df_part2 = pd.read_csv("data/Landuse_Berlin_part2.csv")
+df = pd.concat([df_part1, df_part2], ignore_index=True)
 
-# Drop columns with all NaN values
-gdf.dropna(axis=1, how="all", inplace=True)
-
-# Keep only bezeich and bezfkt 
-columns = ["nam", "fkt", "bezfkt", "zus", "bezzus", "hyd", "bezhyd", "uuid"]
-gdf.drop(columns = columns, inplace=True)
-
-# Get rid of prefix AX_
-gdf["bezeich"] = gdf["bezeich"].str.replace("^AX_", "", regex=True)
-
-
+df["geometry"] = df["geometry"].apply(wkt.loads)  # Convert WKT string to geometry
+gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:25833")
 
 #####land use data in a grid of square tiles#####
 
