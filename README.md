@@ -12,7 +12,7 @@ Ensure that the following prerequisites are met to run the scripts in this repos
 - Required Python libraries: pandas, geopandas, numpy, shapely, scikit-learn, folium, geopy, streamlit, streamlit-folium
 
 ### Data
-The data used in this Streamlit App is openly accessible [here](https://www.zensus2022.de/DE/Aktuelles/Gebaeude_Wohnungen_VOE.html](https://daten.berlin.de/datensaetze/alkis-berlin-tatsachliche-nutzung-wfs-0ee77a1d). It was published in 2024 by Senatsverwaltung für Stadtentwicklung, Bauen und Wohnen Berlin.
+The data used in this Streamlit App is openly accessible [here](https://daten.berlin.de/datensaetze/alkis-berlin-tatsachliche-nutzung-wfs-0ee77a1d). It was published in 2024 by Senatsverwaltung für Stadtentwicklung, Bauen und Wohnen Berlin.
 
 ### Access to the Streamlit App
 
