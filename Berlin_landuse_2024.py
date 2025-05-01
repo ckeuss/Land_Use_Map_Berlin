@@ -21,7 +21,7 @@ st.set_page_config(page_title="Land Use Map Berlin", layout = "wide")
 st.title("Interactive Land Use Map Berlin 2024")
 
 
-col1, col2 = st.columns([1.5,0.5])
+col1, col2 = st.columns([1.3,0.7])
 
 
 with col2:
@@ -214,11 +214,17 @@ with col1:
             popup=folium.Popup(popup_content, max_width=300)
         ).add_to(m)
 
+    # geocode address
+    @st.cache_data
+    def geocode_address(address):
+        geolocator = Nominatim(user_agent="landuse_mapper")
+        location = geolocator.geocode(address)
+        return location
+
     # If submit add geocoded location
     if submit and st.session_state["address"]:
-    
-        geolocator = Nominatim(user_agent="landuse_mapper")
-        location = geolocator.geocode(st.session_state["address"])
+        location = geocode_address(st.session_state["address"])
+
         if location:
             st.session_state["location"] = [location.latitude, location.longitude]
             st.session_state["address"] = location.address
@@ -237,4 +243,5 @@ with col1:
 
     # Render map
     # suppress interaction-driven reruns
-    map_output = st_folium(m, width=800, height=600, returned_objects=[])
+    with st.container():
+        map_output = st_folium(m, width=800, height=600, returned_objects=[])
