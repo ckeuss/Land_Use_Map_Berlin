@@ -243,5 +243,6 @@ with col1:
 
     # Render map
     # suppress interaction-driven reruns
-    with st.container():
+    map_container = st.empty()
+    with st.map_container():
         map_output = st_folium(m, width=800, height=600, returned_objects=[])
