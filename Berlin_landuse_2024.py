@@ -204,7 +204,7 @@ with col1:
         
         popup_content = f"""
         <div style="max-height: 200px; overflow-y: auto; font-size: 12px; width: 250px;">
-        {'<br>'.join([f"{col}: {row[col]*100:.2f}%" for col in landuse_columns if col in row])}
+        {'<br>'.join([f"{col}: {row[col]*100:.2f}%" for col in landuse_columns if col in row and row[col] > 0])}
         </div>
         """
 
