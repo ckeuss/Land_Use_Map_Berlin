@@ -29,7 +29,7 @@ with col2:
     # Text and form
     st.markdown(
     """
-    This land use map of Berlin shows the proportions of land use categories within 1000×1000 m² map tiles. Click on a tile to see the details.
+    This land use map of Berlin shows the proportions of land use categories within 1000 m² map tiles. Click on a tile to see the details.
     The five colors represent land use patterns identified through k-means clustering, an unsupervised machine learning method. 
     Cluster labels were assigned based on the average composition of land use types within each group. The geospatial data from 2024 is sourced from [Berlin Open Data Portal](https://daten.berlin.de/datensaetze/alkis-berlin-tatsachliche-nutzung-wfs-0ee77a1d).<br>
     - <span style='color:#34ADE2'><b>Recreation/ Nature/ Lakeside</b></span>  
