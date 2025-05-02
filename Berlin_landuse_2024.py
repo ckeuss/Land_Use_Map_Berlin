@@ -49,12 +49,17 @@ with col2:
 
 
 # Load preprocessed data
-df_part1 = pd.read_csv("data/Landuse_Berlin_part1.csv")
-df_part2 = pd.read_csv("data/Landuse_Berlin_part2.csv")
-df = pd.concat([df_part1, df_part2], ignore_index=True)
 
-df["geometry"] = df["geometry"].apply(wkt.loads)  # Convert WKT string to geometry
-gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:25833")
+@st.cache_data
+def load_landuse_data():
+    df_part1 = pd.read_csv("data/Landuse_Berlin_part1.csv")
+    df_part2 = pd.read_csv("data/Landuse_Berlin_part2.csv")
+    df = pd.concat([df_part1, df_part2], ignore_index=True)
+    df["geometry"] = df["geometry"].apply(wkt.loads)
+    gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:25833")
+    return gdf
+
+gdf = load_landuse_data()
 
 #####land use data in a grid of square tiles#####
 
@@ -117,7 +122,7 @@ tile_gdf = tile_gdf.merge(tile_features["cluster"], on="tile_id", how="left")
 # Exclude unassigned tiles, no overlapping polygons
 tile_gdf = tile_gdf[tile_gdf["cluster"].notna()]
 
-# Data type
+# Data type to str
 tile_gdf["cluster"] = tile_gdf["cluster"].astype(int).astype(str)
 
 # Characteristics of the clusters: mean values
