@@ -50,7 +50,6 @@ with col2:
 
 # Load preprocessed data
 
-@st.cache_data
 def load_landuse_data():
     df_part1 = pd.read_csv("data/Landuse_Berlin_part1.csv")
     df_part2 = pd.read_csv("data/Landuse_Berlin_part2.csv")
@@ -63,84 +62,84 @@ gdf = load_landuse_data()
 
 #####land use data in a grid of square tiles#####
 
-# Tile size (in meters)
-tile_size = 1000
+@st.cache_data
+def process_tiles_and_cluster(_gdf, tile_size=1000, k=5):
 
-# Bounding box
-minx, miny, maxx, maxy = gdf.total_bounds
+    # Bounding box
+    minx, miny, maxx, maxy = gdf.total_bounds
 
-# Grid of square tiles
-tiles = []
-for x in np.arange(minx, maxx, tile_size):
-    for y in np.arange(miny, maxy, tile_size):
-        tiles.append(box(x, y, x + tile_size, y + tile_size))
+    # Grid of square tiles
+    tiles = []
+    for x in np.arange(minx, maxx, tile_size):
+        for y in np.arange(miny, maxy, tile_size):
+            tiles.append(box(x, y, x + tile_size, y + tile_size))
 
-tile_gdf = gpd.GeoDataFrame(geometry=tiles, crs=gdf.crs)
+    tile_gdf = gpd.GeoDataFrame(geometry=tiles, crs=gdf.crs)
 
-# tile_id as column
-tile_gdf = tile_gdf.reset_index().rename(columns={"index": "tile_id"})
+    # tile_id as column
+    tile_gdf = tile_gdf.reset_index().rename(columns={"index": "tile_id"})
 
-# Tile area
-tile_area = tile_size * tile_size
+    # Tile area
+    tile_area = tile_size * tile_size
 
-# Intersect each land use polygon with each tile 
-intersection = gpd.overlay(gdf, tile_gdf, how="intersection")
+    # Intersect each land use polygon with each tile 
+    intersection = gpd.overlay(gdf, tile_gdf, how="intersection")
 
-# Add area column
-intersection["area"] = intersection.geometry.area
+    # Add area column
+    intersection["area"] = intersection.geometry.area
 
-# Group by tile and land use type
-area_by_tile = intersection.groupby(["tile_id", "bezeich"])["area"].sum().unstack(fill_value=0)
+    # Group by tile and land use type
+    area_by_tile = intersection.groupby(["tile_id", "bezeich"])["area"].sum().unstack(fill_value=0)
 
-# Normalize by full tile area
-tile_features = area_by_tile / tile_area
+    # Normalize by full tile area
+    tile_features = area_by_tile / tile_area
 
-# In case of empty intersections 
-tile_features = tile_features.fillna(0)
+    # In case of empty intersections 
+    tile_features = tile_features.fillna(0)
 
-# Ensure index alignment
-tile_gdf = tile_gdf.set_index("tile_id").join(tile_features)  
+    # Ensure index alignment
+    tile_gdf = tile_gdf.set_index("tile_id").join(tile_features)  
 
-tile_gdf["coverage"] = area_by_tile.sum(axis=1) / tile_area  
+    tile_gdf["coverage"] = area_by_tile.sum(axis=1) / tile_area  
 
-tile_gdf = tile_gdf.reset_index()
+    tile_gdf = tile_gdf.reset_index()
 
-##### k means clustering #####
+    ##### k means clustering #####
 
-# KMeans clusters
-k = 5
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    tile_features["cluster"] = kmeans.fit_predict(tile_features)
 
-kmeans = KMeans(n_clusters=k, random_state=42)
-tile_features["cluster"] = kmeans.fit_predict(tile_features)
+    # Preserve tile_id
+    tile_features["tile_id"] = tile_features.index
 
-# Preserve tile_id
-tile_features["tile_id"] = tile_features.index
+    # Merge cluster values into tile_gdf
+    tile_gdf = tile_gdf.merge(tile_features["cluster"], on="tile_id", how="left")
 
-# Merge cluster values into tile_gdf
-tile_gdf = tile_gdf.merge(tile_features["cluster"], on="tile_id", how="left")
+    # Exclude unassigned tiles, no overlapping polygons
+    tile_gdf = tile_gdf[tile_gdf["cluster"].notna()]
 
-# Exclude unassigned tiles, no overlapping polygons
-tile_gdf = tile_gdf[tile_gdf["cluster"].notna()]
+    # Data type to str
+    tile_gdf["cluster"] = tile_gdf["cluster"].astype(int).astype(str)
 
-# Data type to str
-tile_gdf["cluster"] = tile_gdf["cluster"].astype(int).astype(str)
+    # Characteristics of the clusters: mean values
+    cluster_means = tile_gdf.drop(columns=["geometry", "tile_id"]).groupby("cluster").mean()
 
-# Characteristics of the clusters: mean values
-cluster_means = tile_gdf.drop(columns=["geometry", "tile_id"]).groupby("cluster").mean()
-
-# Iterate over each cluster and print its means
-for cluster_id in cluster_means.index:
-    print(f"Means for Cluster {cluster_id}:")
-    print(cluster_means.loc[cluster_id])
-    print("\n")
+    # Iterate over each cluster and print its means
+    for cluster_id in cluster_means.index:
+        print(f"Means for Cluster {cluster_id}:")
+        print(cluster_means.loc[cluster_id])
+        print("\n")
 
 
-print(tile_gdf["cluster"].isna().sum())
+    #print(tile_gdf["cluster"].isna().sum())
 
-# Low coverage <20%
-tile_gdf["cluster"] = tile_gdf.apply(
-    lambda row: "low_coverage" if row["coverage"] < 0.20 else row["cluster"], axis=1
-)
+    # Low coverage <20%
+    tile_gdf["cluster"] = tile_gdf.apply(
+        lambda row: "low_coverage" if row["coverage"] < 0.20 else row["cluster"], axis=1
+    )
+    return tile_gdf
+
+tile_gdf = process_tiles_and_cluster(gdf, tile_size=1000, k=5)
 
 
 
@@ -220,7 +219,7 @@ with col1:
         ).add_to(m)
 
     # geocode address
-    @st.cache_data
+    @st.cache_resource
     def geocode_address(address):
         geolocator = Nominatim(user_agent="landuse_mapper")
         location = geolocator.geocode(address)
