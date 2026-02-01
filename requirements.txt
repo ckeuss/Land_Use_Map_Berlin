@@ -3,8 +3,8 @@ geopandas
 numpy
 shapely
 scikit-learn
-folium
+folium==0.17.0
 geopy
-streamlit
-streamlit-folium
+streamlit==1.39.0
+streamlit-folium==0.20.0
 altair==4.2.2
