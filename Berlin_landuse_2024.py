@@ -249,4 +249,6 @@ with col1:
     # suppress interaction-driven reruns
     map_placeholder = st.empty()
     with map_placeholder.container():
-        map_output = st_folium(m, width=800, height=600)
+        map_output = st_folium(m, width=800, height=600, returned_objects=[])
+
+    
